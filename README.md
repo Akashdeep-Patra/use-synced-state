@@ -55,44 +55,44 @@ function useSyncedState<T>(
 ## Architecture
 
 ```mermaid
-stateDiagram-v2
-    [*] --> Tab A
-    [*] --> Tab B
-    [*] --> Tab C
-    
-    state "Local State (useState)" as LocalState {
-        [*] --> LocalValue
-    }
-    
-    state "Hook Internals" as HookInternals {
-        direction LR
-        LocalValue --> stateRef[stateRef]
-        stateRef --> setState[setState]
-        stateRef --> channelRef[BroadcastChannel]
-        stateRef --> lock[navigator.locks]
-    }
-    
-    Tab A --> broadcast[A BroadcastChannel postMessage]
-    Tab B --> receive{BroadcastChannel onmessage}
-    Tab C --> broadcast
-    
-    Note right of broadcast: payload tagged with senderId
-    Note right of receive: ignores own messages
-    
-    Tab A --> acquire[navigator.locks.request(lockName, 'exclusive')]
-    Tab B --> acquire
-    Tab C --> acquire
-    
-    acquire --> update[updateFn: setState + postMessage]
-    update --> [*]
-    
-    state "Functional Updater" as FuncUpdater {
-        direction LR
-        prev --> next[(prev) => nextState]
-    }
-    
-    FuncUpdater -->|resolves sequentially| acquire
-```
+flowchart TB
+    subgraph Tabs["Browser Tabs"]
+        TabA["Tab A"]
+        TabB["Tab B"]
+        TabC["Tab C"]
+    end
+
+    subgraph BroadcastChannel["BroadcastChannel"]
+        BC["📡 Fan-out to all tabs"]
+    end
+
+    subgraph Lock["navigator.locks"]
+        L["🔒 Exclusive write lock"]
+    end
+
+    subgraph Hook["Hook Internals"]
+        State["useState"]
+        StateRef["stateRef"]
+        SetState["setState"]
+    end
+
+    TabA -->|postMessage| BC
+    TabB -->|postMessage| BC
+    TabC -->|postMessage| BC
+
+    BC -->|broadcast| TabA
+    BC -->|broadcast| TabB
+    BC -->|broadcast| TabC
+
+    TabA -->|request lock| L
+    TabB -->|request lock| L
+    TabC -->|request lock| L
+
+    L -->|update| State
+    L -->|broadcast| BC
+
+    State --> StateRef
+    StateRef --> SetState
 
 **Key Architectural Safeguards:**
 
