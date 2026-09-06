@@ -54,21 +54,37 @@ function useSyncedState<T>(
 
 ## Architecture
 
-```mermaid
-graph TD
-    A["Tab A"] -->|postMessage| BC["BroadcastChannel"]
-    B["Tab B"] -->|postMessage| BC
-    C["Tab C"] -->|postMessage| BC
-    BC -->|broadcast| A
-    BC -->|broadcast| B
-    BC -->|broadcast| C
-    A -->|request lock| L["navigator.locks"]
-    B -->|request lock| L
-    C -->|request lock| L
-    L -->|update| State["useState + setState"]
-    L -->|broadcast| BC
-    State --> StateRef["stateRef"]
-    StateRef --> SetState["setSyncedState"]
+```
+┌─────────────────────────────────────────────────────────┐
+│                   BROWSER TABS                           │
+│                                                         │
+│   ┌──────────┐     ┌──────────┐     ┌──────────┐      │
+│   │  Tab A    │     │  Tab B    │     │  Tab C    │      │
+│   │           │     │           │     │           │      │
+│   │ ┌──────┐ │     │ ┌──────┐ │     │ ┌──────┐ │      │
+│   │ │Hook  │ │     │ │Hook  │ │     │ │Hook  │ │      │
+│   │ └──┬───┘ │     │ └──┬───┘ │     │ └──┬───┘ │      │
+│   │    │     │     │    │     │     │    │     │      │
+│   └────┼─────┘     └────┼─────┘     └────┼─────┘      │
+│        │postMessage     │postMessage     │postMessage  │
+└────────┼────────────────┼────────────────┼─────────────┘
+         │                │                │
+         ▼                ▼                ▼
+┌─────────────────────────────────────────────────────────┐
+│              BroadcastChannel                            │
+│         (Zero-latency fan-out via browser IPC)            │
+└─────────────────────────────────────────────────────────┘
+         │                │                │
+         ▼                ▼                ▼
+┌─────────────────────────────────────────────────────────┐
+│              navigator.locks                             │
+│         (Exclusive write mutex per tab)                  │
+│                                                         │
+│   ┌─────────────────────────────────────────────┐       │
+│   │  request(lockName, {mode: 'exclusive'},      │       │
+│   │    updateFn) → setState + postMessage        │       │
+│   └─────────────────────────────────────────────┘       │
+└─────────────────────────────────────────────────────────┘
 ```
 
 **Key Architectural Safeguards:**
