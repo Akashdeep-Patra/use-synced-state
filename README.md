@@ -55,44 +55,21 @@ function useSyncedState<T>(
 ## Architecture
 
 ```mermaid
-flowchart TB
-    subgraph Tabs["Browser Tabs"]
-        TabA["Tab A"]
-        TabB["Tab B"]
-        TabC["Tab C"]
-    end
-
-    subgraph BroadcastChannel["BroadcastChannel"]
-        BC["📡 Fan-out to all tabs"]
-    end
-
-    subgraph Lock["navigator.locks"]
-        L["🔒 Exclusive write lock"]
-    end
-
-    subgraph Hook["Hook Internals"]
-        State["useState"]
-        StateRef["stateRef"]
-        SetState["setState"]
-    end
-
-    TabA -->|postMessage| BC
-    TabB -->|postMessage| BC
-    TabC -->|postMessage| BC
-
-    BC -->|broadcast| TabA
-    BC -->|broadcast| TabB
-    BC -->|broadcast| TabC
-
-    TabA -->|request lock| L
-    TabB -->|request lock| L
-    TabC -->|request lock| L
-
-    L -->|update| State
+graph TD
+    A["Tab A"] -->|postMessage| BC["BroadcastChannel"]
+    B["Tab B"] -->|postMessage| BC
+    C["Tab C"] -->|postMessage| BC
+    BC -->|broadcast| A
+    BC -->|broadcast| B
+    BC -->|broadcast| C
+    A -->|request lock| L["navigator.locks"]
+    B -->|request lock| L
+    C -->|request lock| L
+    L -->|update| State["useState + setState"]
     L -->|broadcast| BC
-
-    State --> StateRef
-    StateRef --> SetState
+    State --> StateRef["stateRef"]
+    StateRef --> SetState["setSyncedState"]
+```
 
 **Key Architectural Safeguards:**
 
