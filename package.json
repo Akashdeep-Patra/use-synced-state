@@ -1,0 +1,25 @@
+{
+  "name": "use-synced-state",
+  "version": "1.0.0",
+  "description": "Production-ready React hook for cross-tab state synchronization using BroadcastChannel and navigator.locks",
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "bun test",
+    "dev": "bun --watch src/index.ts"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.7.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  }
+}
