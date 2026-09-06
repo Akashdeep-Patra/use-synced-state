@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="480" viewBox="0 0 800 480">
+<style>text { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }</style>
+<rect width="800" height="480" fill="#fafafa" rx="12"/>
+<text x="400" y="30" fill="#1a1a1a" font-size="18" font-weight="700" text-anchor="middle">Race-Condition Prevention with navigator.locks</text>
+
+<!-- WITHOUT locks -->
+<rect x="40" y="55" width="350" height="175" fill="#ffebee" stroke="#D32F2F" stroke-width="2" rx="6"/>
+<text x="215" y="80" fill="#D32F2F" font-size="16" font-weight="700" text-anchor="middle">Without Locks</text>
+<text x="215" y="105" fill="#666" font-size="11" text-anchor="middle">Split-brain mutations</text>
+<text x="120" y="130" fill="#333" font-size="11" text-anchor="start">Tab A reads count = 0</text>
+<text x="120" y="150" fill="#333" font-size="11" text-anchor="start">Tab B reads count = 0</text>
+<text x="120" y="175" fill="#333" font-size="11" text-anchor="start">Tab A writes count = 1</text>
+<text x="120" y="195" fill="#333" font-size="11" text-anchor="start">Tab B writes count = 1</text>
+<text x="215" y="220" fill="#D32F2F" font-size="13" font-weight="700" text-anchor="middle">Result: count = 1 (should be 2!)</text>
+
+<!-- WITH locks -->
+<rect x="410" y="55" width="350" height="175" fill="#e8f5e9" stroke="#2E7D32" stroke-width="2" rx="6"/>
+<text x="585" y="80" fill="#2E7D32" font-size="16" font-weight="700" text-anchor="middle">With Locks</text>
+<text x="585" y="105" fill="#666" font-size="11" text-anchor="middle">Deterministic writes</text>
+<text x="430" y="130" fill="#333" font-size="11" text-anchor="start">Tab A acquires lock, reads 0</text>
+<text x="430" y="150" fill="#333" font-size="11" text-anchor="start">Tab A writes 1, broadcasts</text>
+<text x="430" y="175" fill="#333" font-size="11" text-anchor="start">Tab B acquires lock, reads 1</text>
+<text x="430" y="195" fill="#333" font-size="11" text-anchor="start">Tab B writes 2, broadcasts</text>
+<text x="585" y="220" fill="#2E7D32" font-size="13" font-weight="700" text-anchor="middle">Result: count = 2</text>
+
+<text x="400" y="260" fill="#666" font-size="14" font-weight="600" text-anchor="middle">Timeline Comparison</text>
+
+<!-- Timeline without locks -->
+<rect x="40" y="275" width="720" height="85" fill="#ffebee" stroke="#ffcdd2" stroke-width="1" rx="6"/>
+<text x="60" y="298" fill="#D32F2F" font-size="12" font-weight="600">Without locks (parallel):</text>
+<text x="60" y="322" fill="#333" font-size="11">T0: Tab A reads 0  |  Tab B reads 0</text>
+<text x="60" y="342" fill="#333" font-size="11">T1: Tab A writes 1  |  Tab B writes 1</text>
+<text x="60" y="362" fill="#D32F2F" font-size="12" font-weight="700">Final: count = 1</text>
+
+<!-- Timeline with locks -->
+<rect x="40" y="375" width="720" height="85" fill="#e8f5e9" stroke="#c8e6c9" stroke-width="1" rx="6"/>
+<text x="60" y="398" fill="#2E7D32" font-size="12" font-weight="600">With locks (sequential):</text>
+<text x="60" y="422" fill="#333" font-size="11">Tab A reads 0 → writes 1 → Tab B reads 1 → writes 2</text>
+<text x="60" y="442" fill="#2E7D32" font-size="12" font-weight="700">Final: count = 2</text>
+</svg>

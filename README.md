@@ -7,11 +7,15 @@ Production-ready React custom hook for synchronized cross-tab state management. 
 
 ## Installation
 
+**Copy the hook** — grab [`src/index.ts`](./src/index.ts) and drop it into your project. It's a single self-contained file.
+
+**Or install from GitHub:**
+
 ```bash
-bun add use-synced-state
+bun add github:Akashdeep-Patra/use-synced-state
 ```
 
-Or copy the hook directly into your project.
+> Don't install `use-synced-state` from npm — that's a different package.
 
 ## Usage
 
@@ -48,7 +52,7 @@ function useSyncedState<T>(
 
 | Option | Description |
 |---|---|
-| `name` | Custom channel/lock prefix |
+| `name` | Overrides the full channel name (default: `synced-state:${key}`) |
 | `serialize` | Custom serialization function |
 | `deserialize` | Custom deserialization function |
 

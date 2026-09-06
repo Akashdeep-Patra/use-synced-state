@@ -12,6 +12,21 @@ type SyncMessage<T> = {
   senderId: string;
 };
 
+function getBroadcastChannel(): typeof BroadcastChannel | null {
+  if (typeof globalThis === 'undefined' || !('BroadcastChannel' in globalThis)) {
+    return null;
+  }
+  return globalThis.BroadcastChannel as typeof BroadcastChannel;
+}
+
+function getNavigatorLocks(): Navigator['locks'] | null {
+  if (typeof globalThis === 'undefined' || !('navigator' in globalThis)) {
+    return null;
+  }
+  const nav = globalThis.navigator as Navigator;
+  return 'locks' in nav ? nav.locks : null;
+}
+
 export function useSyncedState<T>(
   key: string,
   initialValue: T | (() => T),
@@ -33,6 +48,8 @@ export function useSyncedState<T>(
   });
 
   const stateRef = useRef<T>(state);
+  const applyQueueRef = useRef(Promise.resolve());
+
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
@@ -40,11 +57,12 @@ export function useSyncedState<T>(
   const channelRef = useRef<BroadcastChannel | null>(null);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !('BroadcastChannel' in window)) {
+    const BroadcastChannelImpl = getBroadcastChannel();
+    if (!BroadcastChannelImpl) {
       return;
     }
 
-    const channel = new BroadcastChannel(channelName);
+    const channel = new BroadcastChannelImpl(channelName);
     channelRef.current = channel;
 
     channel.onmessage = (event: MessageEvent<SyncMessage<T>>) => {
@@ -56,9 +74,12 @@ export function useSyncedState<T>(
 
       const nextValue = options.deserialize
         ? options.deserialize(data.payload)
-        : data.payload;
+        : (data.payload as T);
 
-      setState(nextValue);
+      applyQueueRef.current = applyQueueRef.current.then(() => {
+        stateRef.current = nextValue;
+        setState(nextValue);
+      });
     };
 
     return () => {
@@ -70,21 +91,25 @@ export function useSyncedState<T>(
   const setSyncedState = useCallback(
     async (value: T | ((prevState: T) => T)) => {
       const updateFn = async () => {
+        // Wait for any in-flight cross-tab messages to apply before reading state
+        await applyQueueRef.current;
+
         const nextState =
           typeof value === 'function'
             ? (value as (prevState: T) => T)(stateRef.current)
             : value;
 
+        stateRef.current = nextState;
         setState(nextState);
 
         if (channelRef.current) {
           const payload = options.serialize
-            ? (options.serialize(nextState) as T)
+            ? options.serialize(nextState)
             : nextState;
 
           const message: SyncMessage<T> = {
             type: 'STATE_UPDATE',
-            payload,
+            payload: payload as T,
             senderId: tabIdRef.current,
           };
 
@@ -92,8 +117,9 @@ export function useSyncedState<T>(
         }
       };
 
-      if (typeof navigator !== 'undefined' && 'locks' in navigator) {
-        await navigator.locks.request(lockName, { mode: 'exclusive' }, updateFn);
+      const locks = getNavigatorLocks();
+      if (locks) {
+        await locks.request(lockName, { mode: 'exclusive' }, updateFn);
       } else {
         await updateFn();
       }
