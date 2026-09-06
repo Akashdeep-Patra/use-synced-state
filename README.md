@@ -54,11 +54,57 @@ function useSyncedState<T>(
 
 ## Architecture
 
-- **Race-Condition Exclusion** (`navigator.locks`): Every write acquires an exclusive mutex, ensuring functional updaters resolve sequentially across all tabs.
-- **Instant Fan-Out** (`BroadcastChannel`): State updates are broadcast to every listening context in parallel via browser IPC.
-- **Loop Prevention** (`senderId`): Each tab has a unique ID (`crypto.randomUUID()`). Outgoing messages are tagged and incoming messages from the same tab are ignored.
-- **Stale Closure Safety** (`stateRef`): A mutable reference ensures functional updaters always evaluate against the latest values.
-- **Browser Graceful Degradation**: Falls back to local-only mode when `BroadcastChannel` or `navigator.locks` are unavailable (e.g., SSR environments).
+```mermaid
+stateDiagram-v2
+    [*] --> Tab A
+    [*] --> Tab B
+    [*] --> Tab C
+    
+    state "Local State (useState)" as LocalState {
+        [*] --> LocalValue
+    }
+    
+    state "Hook Internals" as HookInternals {
+        direction LR
+        LocalValue --> stateRef[stateRef]
+        stateRef --> setState[setState]
+        stateRef --> channelRef[BroadcastChannel]
+        stateRef --> lock[navigator.locks]
+    }
+    
+    Tab A --> broadcast[A BroadcastChannel postMessage]
+    Tab B --> receive{BroadcastChannel onmessage}
+    Tab C --> broadcast
+    
+    Note right of broadcast: payload tagged with senderId
+    Note right of receive: ignores own messages
+    
+    Tab A --> acquire[navigator.locks.request(lockName, 'exclusive')]
+    Tab B --> acquire
+    Tab C --> acquire
+    
+    acquire --> update[updateFn: setState + postMessage]
+    update --> [*]
+    
+    state "Functional Updater" as FuncUpdater {
+        direction LR
+        prev --> next[(prev) => nextState]
+    }
+    
+    FuncUpdater -->|resolves sequentially| acquire
+```
+
+**Key Architectural Safeguards:**
+
+- **Race-Condition Exclusion**: `navigator.locks.request()` with exclusive mode ensures only one tab writes at a time. Functional updaters `(prev) => prev + 1` resolve sequentially across all tabs.
+
+- **Instant Fan-Out**: After acquiring the lock, state updates are broadcast via `channel.postMessage()` to all sibling tabs in parallel through browser IPC.
+
+- **Loop Prevention**: Each tab's `crypto.randomUUID()` generates a unique `senderId`. Broadcast listeners filter out messages from their own tab ID, eliminating echo loops.
+
+- **Stale Closure Safety**: The mutable `stateRef` reference ensures functional updaters always evaluate against the latest state value during fast-succession writes, preventing stale closure bugs.
+
+- **Graceful Degradation**: If `BroadcastChannel` or `navigator.locks` are unavailable (SSR, older browsers), the hook falls back to local-only mode without throwing errors.
 
 ## Live Demo
 
